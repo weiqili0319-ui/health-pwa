@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#667eea">
+    <meta name="description" content="语音记录血糖血压，数据存储在手机本地">
+
+    <title>健康记录</title>
+
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="icon-192.png">
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            min-height: -webkit-fill-available;
+            color: white;
+            padding: 20px;
+            padding-top: env(safe-area-inset-top, 20px);
+            padding-bottom: env(safe-area-inset-bottom, 20px);
+        }
+
+        .container {
+            max-width: 400px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        header {
+            text-align: center;
+            padding: 10px 0;
+        }
+
+        header h1 {
+            font-size: 24px;
+            font-weight: 600;
+        }
+
+        header p {
+            font-size: 12px;
+            opacity: 0.8;
+            margin-top: 4px;
+        }
+
+        .status-bar {
+            background: rgba(255,255,255,0.15);
+            border-radius: 8px;
+            padding: 8px 12px;
+            font-size: 13px;
+            text-align: center;
+        }
+
+        .mic-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px 0;
+        }
+
+        .mic-button {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            border: none;
+            background: white;
+            color: #667eea;
+            font-size: 40px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.25);
+            transition: all 0.2s ease;
+        }
+
+        .mic-button:active {
+            transform: scale(0.95);
+        }
+
+        .mic-button.listening {
+            background: #ff5722;
+            color: white;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(255,87,34,0.6); }
+            70% { box-shadow: 0 0 0 15px rgba(255,87,34,0); }
+            100% { box-shadow: 0 0 0 0 rgba(255,87,34,0); }
+        }
+
+        .mic-hint {
+            margin-top: 12px;
+            font-size: 13px;
+            opacity: 0.8;
+        }
+
+        .result-box {
+            background: rgba(255,255,255,0.2);
+            border-radius: 12px;
+            padding: 16px;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+
+        .result-box h3 {
+            font-size: 13px;
+            opacity: 0.7;
+            margin-bottom: 8px;
+        }
+
+        .result-box p {
+            font-size: 16px;
+            line-height: 1.5;
+        }
+
+        .quick-actions {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .quick-btn {
+            padding: 14px 10px;
+            border: 2px solid rgba(255,255,255,0.4);
+            background: rgba(255,255,255,0.1);
+            color: white;
+            border-radius: 10px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .quick-btn:active {
+            background: rgba(255,255,255,0.25);
+            transform: scale(0.98);
+        }
+
+        .history-section {
+            background: rgba(255,255,255,0.1);
+            border-radius: 12px;
+            padding: 16px;
+        }
+
+        .history-section h3 {
+            font-size: 14px;
+            margin-bottom: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .history-section h3 span {
+            font-size: 12px;
+            opacity: 0.7;
+            cursor: pointer;
+        }
+
+        .history-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .history-item {
+            background: rgba(255,255,255,0.1);
+            padding: 10px 12px;
+            border-radius: 8px;
+            font-size: 14px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .history-item .value {
+            font-weight: 500;
+        }
+
+        .history-item .time {
+            opacity: 0.7;
+            font-size: 12px;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+
+        .tab {
+            flex: 1;
+            padding: 8px;
+            border: none;
+            background: rgba(255,255,255,0.1);
+            color: white;
+            border-radius: 6px;
+            font-size: 13px;
+            cursor: pointer;
+        }
+
+        .tab.active {
+            background: rgba(255,255,255,0.3);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 20px;
+            opacity: 0.6;
+            font-size: 14px;
+        }
+
+        .disclaimer {
+            text-align: center;
+            font-size: 11px;
+            opacity: 0.5;
+            margin-top: 10px;
+            line-height: 1.4;
+        }
+
+        /* 隐藏滚动条 */
+        .history-list::-webkit-scrollbar {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>健康记录</h1>
+            <p>数据安全存储在您的手机</p>
+        </header>
+
+        <div class="status-bar" id="statusBar">点击麦克风开始语音记录</div>
+
+        <div class="mic-section">
+            <button class="mic-button" id="micBtn" onclick="toggleListening()">
+                🎤
+            </button>
+            <div class="mic-hint">例如：血糖 6.4 / 血压 130 85</div>
+        </div>
+
+        <div class="result-box">
+            <h3>识别结果</h3>
+            <p id="result">等待语音输入...</p>
+        </div>
+
+        <div class="quick-actions">
+            <button class="quick-btn" onclick="showSummary('today')">今日汇总</button>
+            <button class="quick-btn" onclick="showSummary('3day')">三日报</button>
+            <button class="quick-btn" onclick="showSummary('weekly')">周报</button>
+            <button class="quick-btn" onclick="showSummary('latest')">最新数据</button>
+        </div>
+
+        <div class="history-section">
+            <h3>
+                历史记录
+                <span onclick="exportData()">导出</span>
+            </h3>
+            <div class="tabs">
+                <button class="tab active" onclick="switchTab('glucose')">血糖</button>
+                <button class="tab" onclick="switchTab('pressure')">血压</button>
+            </div>
+            <div class="history-list" id="historyList">
+                <div class="empty-state">暂无记录</div>
+            </div>
+        </div>
+
+        <p class="disclaimer">
+            本应用仅供个人健康记录参考，非医疗设备。<br>
+            如有健康问题请咨询专业医生。
+        </p>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

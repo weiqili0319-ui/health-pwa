@@ -1,0 +1,26 @@
+{
+    "name": "健康语音记录",
+    "short_name": "健康记录",
+    "description": "语音记录血糖血压，数据存储在手机本地",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#667eea",
+    "theme_color": "#667eea",
+    "orientation": "portrait",
+    "icons": [
+        {
+            "src": "icon-192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any maskable"
+        },
+        {
+            "src": "icon-512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any maskable"
+        }
+    ],
+    "categories": ["health", "medical"],
+    "lang": "zh-CN"
+}
