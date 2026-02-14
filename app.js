@@ -647,6 +647,7 @@ function showAutoRecordOverlay() {
 
 function startAutoRecord() {
     const overlay = document.getElementById('autoRecordOverlay');
+    const content = overlay.querySelector('.auto-record-content');
 
     // 启用语音
     enableSpeech();
@@ -657,20 +658,119 @@ function startAutoRecord() {
         return;
     }
 
+    // 更新界面显示正在聆听
+    content.innerHTML = `
+        <div class="big-mic" style="color: #ff5722;">🎤</div>
+        <p>正在聆听...</p>
+        <p class="hint">请说：血糖 6.4 或 血压 130 85</p>
+    `;
+    overlay.classList.add('listening');
+
+    // 设置识别结果处理
+    recognition.onresult = (event) => {
+        const transcript = event.results[event.results.length - 1][0].transcript;
+
+        // 显示识别到的文字
+        content.innerHTML = `
+            <div class="big-mic">✓</div>
+            <p>识别到：${transcript}</p>
+            <p class="hint">正在处理...</p>
+        `;
+
+        if (event.results[event.results.length - 1].isFinal) {
+            // 处理语音输入并播报
+            processAutoVoiceInput(transcript, overlay);
+        }
+    };
+
+    recognition.onerror = (event) => {
+        console.error('Speech error:', event.error);
+        content.innerHTML = `
+            <div class="big-mic">❌</div>
+            <p>识别失败</p>
+            <p class="hint">轻触重试</p>
+        `;
+        overlay.classList.remove('listening');
+        overlay.onclick = startAutoRecord;
+    };
+
+    recognition.onend = () => {
+        overlay.classList.remove('listening');
+    };
+
     // 开始录音
     try {
         recognition.start();
-        overlay.classList.add('listening');
-
-        // 录音结束后关闭覆盖层
-        recognition.onend = () => {
-            stopListening();
-            overlay.classList.remove('listening');
-            overlay.style.display = 'none';
-        };
     } catch (e) {
         console.error('Start error:', e);
         overlay.style.display = 'none';
+    }
+}
+
+// 处理自动模式的语音输入
+async function processAutoVoiceInput(text, overlay) {
+    const content = overlay.querySelector('.auto-record-content');
+    const parsed = parseHealthText(text);
+
+    if (Object.keys(parsed).length === 0) {
+        content.innerHTML = `
+            <div class="big-mic">❓</div>
+            <p>没有听清楚</p>
+            <p class="hint">轻触屏幕重试</p>
+        `;
+        speak('没有听清楚，请重试');
+        overlay.onclick = startAutoRecord;
+        return;
+    }
+
+    const savedParts = [];
+
+    try {
+        if (parsed.bloodSugar) {
+            await saveGlucose(parsed.bloodSugar, text);
+            savedParts.push(`血糖${parsed.bloodSugar}`);
+        }
+
+        if (parsed.systolic && parsed.diastolic) {
+            await savePressure(parsed.systolic, parsed.diastolic, text);
+            savedParts.push(`血压${parsed.systolic}，${parsed.diastolic}`);
+        }
+
+        const speechText = '好的，已记录' + savedParts.join('，') + '。';
+
+        // 显示成功
+        content.innerHTML = `
+            <div class="big-mic">✅</div>
+            <p>记录成功</p>
+            <p class="hint">${savedParts.join('，')}</p>
+        `;
+
+        // 语音播报
+        speak(speechText);
+
+        // 刷新历史列表
+        loadHistory(currentTab);
+
+        // 3秒后关闭覆盖层
+        setTimeout(() => {
+            overlay.style.display = 'none';
+            // 恢复原始内容
+            content.innerHTML = `
+                <div class="big-mic">🎤</div>
+                <p>轻触屏幕开始说话</p>
+                <p class="hint">例如：血糖 6.4 / 血压 130 85</p>
+            `;
+            overlay.onclick = startAutoRecord;
+        }, 3000);
+
+    } catch (error) {
+        console.error('Save error:', error);
+        content.innerHTML = `
+            <div class="big-mic">❌</div>
+            <p>保存失败</p>
+            <p class="hint">轻触重试</p>
+        `;
+        overlay.onclick = startAutoRecord;
     }
 }
 
