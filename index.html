@@ -237,6 +237,58 @@
         .history-list::-webkit-scrollbar {
             display: none;
         }
+
+        /* 自动录音覆盖层 */
+        .auto-record-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            cursor: pointer;
+        }
+
+        .auto-record-content {
+            text-align: center;
+            color: white;
+        }
+
+        .big-mic {
+            font-size: 120px;
+            margin-bottom: 30px;
+            animation: breathe 2s infinite;
+        }
+
+        @keyframes breathe {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.1); opacity: 0.8; }
+        }
+
+        .auto-record-content p {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+
+        .auto-record-content .hint {
+            font-size: 16px;
+            opacity: 0.7;
+        }
+
+        .auto-record-overlay.listening .big-mic {
+            animation: pulse-big 1s infinite;
+            color: #ff5722;
+        }
+
+        @keyframes pulse-big {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
     </style>
 </head>
 <body>
@@ -248,7 +300,16 @@
 
         <div class="status-bar" id="statusBar">点击麦克风开始语音记录</div>
 
-        <div class="mic-section">
+        <!-- 自动录音模式：大按钮覆盖 -->
+        <div class="auto-record-overlay" id="autoRecordOverlay" onclick="startAutoRecord()" style="display:none;">
+            <div class="auto-record-content">
+                <div class="big-mic">🎤</div>
+                <p>轻触屏幕开始说话</p>
+                <p class="hint">例如：血糖 6.4 / 血压 130 85</p>
+            </div>
+        </div>
+
+        <div class="mic-section" id="micSection">
             <button class="mic-button" id="micBtn" onclick="toggleListening()">
                 🎤
             </button>

@@ -616,13 +616,14 @@ async function init() {
         const action = params.get('action');
 
         if (action === 'record') {
-            setTimeout(() => toggleListening(), 500);
+            // 显示大按钮覆盖层，等待用户点击
+            showAutoRecordOverlay();
         } else if (action === 'weekly') {
-            showSummary('weekly');
+            showAutoAction('weekly');
         } else if (action === '3day') {
-            showSummary('3day');
+            showAutoAction('3day');
         } else if (action === 'latest') {
-            showSummary('latest');
+            showAutoAction('latest');
         }
 
     } catch (error) {
@@ -636,6 +637,59 @@ if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js')
         .then(reg => console.log('SW registered'))
         .catch(err => console.log('SW registration failed:', err));
+}
+
+// 自动录音覆盖层
+function showAutoRecordOverlay() {
+    const overlay = document.getElementById('autoRecordOverlay');
+    overlay.style.display = 'flex';
+}
+
+function startAutoRecord() {
+    const overlay = document.getElementById('autoRecordOverlay');
+
+    // 启用语音
+    enableSpeech();
+
+    // 初始化语音识别
+    if (!recognition && !initSpeechRecognition()) {
+        overlay.style.display = 'none';
+        return;
+    }
+
+    // 开始录音
+    try {
+        recognition.start();
+        overlay.classList.add('listening');
+
+        // 录音结束后关闭覆盖层
+        recognition.onend = () => {
+            stopListening();
+            overlay.classList.remove('listening');
+            overlay.style.display = 'none';
+        };
+    } catch (e) {
+        console.error('Start error:', e);
+        overlay.style.display = 'none';
+    }
+}
+
+// 自动执行操作（显示提示后执行）
+function showAutoAction(type) {
+    const overlay = document.getElementById('autoRecordOverlay');
+    const content = overlay.querySelector('.auto-record-content');
+
+    content.innerHTML = `
+        <div class="big-mic">📊</div>
+        <p>轻触屏幕播报${type === 'weekly' ? '周报' : type === '3day' ? '三日报' : '最新数据'}</p>
+    `;
+
+    overlay.style.display = 'flex';
+    overlay.onclick = () => {
+        enableSpeech();
+        overlay.style.display = 'none';
+        showSummary(type);
+    };
 }
 
 // 启动
