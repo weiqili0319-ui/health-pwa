@@ -2,7 +2,7 @@
  * Service Worker - 离线支持
  */
 
-const CACHE_NAME = 'health-pwa-v1';
+const CACHE_NAME = 'health-pwa-v2';
 const ASSETS = [
     '/',
     '/index.html',
