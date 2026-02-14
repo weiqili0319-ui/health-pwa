@@ -298,7 +298,7 @@ async function processVoiceInput(text) {
 
         if (parsed.systolic && parsed.diastolic) {
             await savePressure(parsed.systolic, parsed.diastolic, text);
-            savedParts.push(`血压${parsed.systolic}的${parsed.diastolic}`);
+            savedParts.push(`血压${parsed.systolic}，${parsed.diastolic}`);
         }
 
         const speech = '好的，已记录' + savedParts.join('，') + '。';
@@ -476,7 +476,7 @@ async function showSummary(type) {
 
         if (latestPressure.length > 0) {
             const p = latestPressure[0];
-            parts.push(`最近血压${p.systolic}的${p.diastolic}，${formatTime(p.recordedAt)}`);
+            parts.push(`最近血压，高压${p.systolic}，低压${p.diastolic}，${formatTime(p.recordedAt)}`);
         } else {
             parts.push('暂无血压记录');
         }
@@ -504,7 +504,7 @@ async function showSummary(type) {
     if (stats.pressure.count === 0) {
         parts.push('没有血压记录。');
     } else {
-        parts.push(`血压共${stats.pressure.count}次，平均${stats.pressure.avgSystolic}的${stats.pressure.avgDiastolic}，`);
+        parts.push(`血压共${stats.pressure.count}次，平均高压${stats.pressure.avgSystolic}，低压${stats.pressure.avgDiastolic}，`);
         parts.push(`收缩压${stats.pressure.minSystolic}到${stats.pressure.maxSystolic}，`);
         parts.push(`舒张压${stats.pressure.minDiastolic}到${stats.pressure.maxDiastolic}。`);
     }
