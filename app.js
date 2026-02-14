@@ -227,6 +227,9 @@ function initSpeechRecognition() {
 }
 
 function toggleListening() {
+    // 用户点击时启用语音播报
+    enableSpeech();
+
     if (isListening) {
         recognition.stop();
     } else {
@@ -316,17 +319,72 @@ async function processVoiceInput(text) {
 // 语音播报
 // ============================================================
 
-function speak(text) {
-    if ('speechSynthesis' in window) {
-        // 取消之前的播报
-        speechSynthesis.cancel();
+let speechEnabled = false;
+let voices = [];
 
-        const utterance = new SpeechSynthesisUtterance(text);
-        utterance.lang = 'zh-CN';
-        utterance.rate = 1.0;
-        utterance.pitch = 1.0;
-        speechSynthesis.speak(utterance);
+// 初始化语音
+function initSpeech() {
+    if (!('speechSynthesis' in window)) {
+        console.log('浏览器不支持语音合成');
+        return;
     }
+
+    // 获取可用语音
+    const loadVoices = () => {
+        voices = speechSynthesis.getVoices();
+        console.log('可用语音:', voices.length);
+    };
+
+    loadVoices();
+    speechSynthesis.onvoiceschanged = loadVoices;
+}
+
+// 启用语音（需要用户交互触发）
+function enableSpeech() {
+    if (speechEnabled) return;
+
+    // 用一个静音的语音来解锁
+    const utterance = new SpeechSynthesisUtterance('');
+    utterance.volume = 0;
+    speechSynthesis.speak(utterance);
+    speechEnabled = true;
+    console.log('语音已启用');
+}
+
+function speak(text) {
+    if (!('speechSynthesis' in window)) {
+        console.log('浏览器不支持语音合成');
+        alert(text); // 降级为弹窗
+        return;
+    }
+
+    // 取消之前的播报
+    speechSynthesis.cancel();
+
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = 'zh-CN';
+    utterance.rate = 0.9;
+    utterance.pitch = 1.0;
+    utterance.volume = 1.0;
+
+    // 尝试找中文语音
+    const zhVoice = voices.find(v => v.lang.includes('zh') || v.lang.includes('CN'));
+    if (zhVoice) {
+        utterance.voice = zhVoice;
+    }
+
+    utterance.onstart = () => console.log('开始播报:', text);
+    utterance.onend = () => console.log('播报结束');
+    utterance.onerror = (e) => {
+        console.error('语音播报错误:', e);
+        // 降级为弹窗显示
+        document.getElementById('statusBar').textContent = text;
+    };
+
+    // 延迟执行，确保之前的取消生效
+    setTimeout(() => {
+        speechSynthesis.speak(utterance);
+    }, 100);
 }
 
 // ============================================================
@@ -492,6 +550,7 @@ async function init() {
     try {
         await initDB();
         initSpeechRecognition();
+        initSpeech();
         loadHistory('glucose');
 
         // 检查 URL 参数自动执行
