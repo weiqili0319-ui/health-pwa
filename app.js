@@ -316,11 +316,11 @@ async function processVoiceInput(text) {
 }
 
 // ============================================================
-// 语音播报
+// 语音播报 (iOS Safari 兼容版)
 // ============================================================
 
-let speechEnabled = false;
 let voices = [];
+let isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
 
 // 初始化语音
 function initSpeech() {
@@ -332,33 +332,94 @@ function initSpeech() {
     // 获取可用语音
     const loadVoices = () => {
         voices = speechSynthesis.getVoices();
-        console.log('可用语音:', voices.length);
+        console.log('可用语音:', voices.length, voices.map(v => v.lang));
     };
 
-    loadVoices();
+    // iOS 需要延迟加载
+    if (isIOS) {
+        setTimeout(loadVoices, 100);
+    } else {
+        loadVoices();
+    }
     speechSynthesis.onvoiceschanged = loadVoices;
 }
 
-// 启用语音（需要用户交互触发）
+// 启用语音（iOS Safari 必须在用户交互中直接调用）
 function enableSpeech() {
-    if (speechEnabled) return;
-
-    // 用一个静音的语音来解锁
-    const utterance = new SpeechSynthesisUtterance('');
-    utterance.volume = 0;
-    speechSynthesis.speak(utterance);
-    speechEnabled = true;
-    console.log('语音已启用');
+    // iOS Safari 需要在点击事件中直接触发一次
+    if (isIOS && 'speechSynthesis' in window) {
+        const utterance = new SpeechSynthesisUtterance(' ');
+        utterance.volume = 0.01;
+        utterance.rate = 10;
+        speechSynthesis.speak(utterance);
+    }
 }
 
 function speak(text) {
+    console.log('准备播报:', text);
+
     if (!('speechSynthesis' in window)) {
         console.log('浏览器不支持语音合成');
-        alert(text); // 降级为弹窗
+        alert(text);
         return;
     }
 
-    // 取消之前的播报
+    // iOS Safari 特殊处理
+    if (isIOS) {
+        speakIOS(text);
+    } else {
+        speakDefault(text);
+    }
+}
+
+// iOS Safari 专用播报
+function speakIOS(text) {
+    // iOS 必须先取消，等一下再播
+    speechSynthesis.cancel();
+
+    setTimeout(() => {
+        const utterance = new SpeechSynthesisUtterance(text);
+
+        // iOS 中文语音设置
+        utterance.lang = 'zh-CN';
+        utterance.rate = 0.9;
+        utterance.pitch = 1.0;
+        utterance.volume = 1.0;
+
+        // 尝试使用中文语音
+        if (voices.length > 0) {
+            const zhVoice = voices.find(v =>
+                v.lang === 'zh-CN' ||
+                v.lang === 'zh-TW' ||
+                v.lang.startsWith('zh')
+            );
+            if (zhVoice) {
+                utterance.voice = zhVoice;
+                console.log('使用语音:', zhVoice.name);
+            }
+        }
+
+        utterance.onstart = () => {
+            console.log('iOS 开始播报');
+            document.getElementById('statusBar').textContent = '正在播报...';
+        };
+
+        utterance.onend = () => {
+            console.log('iOS 播报结束');
+            document.getElementById('statusBar').textContent = '播报完成';
+        };
+
+        utterance.onerror = (e) => {
+            console.error('iOS 播报错误:', e.error);
+            document.getElementById('statusBar').textContent = '播报失败: ' + e.error;
+        };
+
+        speechSynthesis.speak(utterance);
+    }, 250);
+}
+
+// 默认播报（Android/桌面）
+function speakDefault(text) {
     speechSynthesis.cancel();
 
     const utterance = new SpeechSynthesisUtterance(text);
@@ -367,21 +428,15 @@ function speak(text) {
     utterance.pitch = 1.0;
     utterance.volume = 1.0;
 
-    // 尝试找中文语音
     const zhVoice = voices.find(v => v.lang.includes('zh') || v.lang.includes('CN'));
     if (zhVoice) {
         utterance.voice = zhVoice;
     }
 
-    utterance.onstart = () => console.log('开始播报:', text);
+    utterance.onstart = () => console.log('开始播报');
     utterance.onend = () => console.log('播报结束');
-    utterance.onerror = (e) => {
-        console.error('语音播报错误:', e);
-        // 降级为弹窗显示
-        document.getElementById('statusBar').textContent = text;
-    };
+    utterance.onerror = (e) => console.error('播报错误:', e);
 
-    // 延迟执行，确保之前的取消生效
     setTimeout(() => {
         speechSynthesis.speak(utterance);
     }, 100);
@@ -392,6 +447,9 @@ function speak(text) {
 // ============================================================
 
 async function showSummary(type) {
+    // iOS: 必须在点击事件中先触发一次语音
+    enableSpeech();
+
     let speech = '';
     let days = 7;
 
